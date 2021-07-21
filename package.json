@@ -1,0 +1,16 @@
+{
+  "name": "tic_tac_toe",
+  "version": "1.0.0",
+  "description": "2 player Tic Tac Toe Game",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Rohan Kar",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "nodemon": "^2.0.7",
+    "socket.io": "^4.1.2"
+  }
+}

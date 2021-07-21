@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name='description' content='Online Multiplayer Tic Tac Toe Game - A tic tac toe multiplayer game where people can find opponents online'>
+    <link rel="stylesheet" href="./index.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@500&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/c79cf4c064.js" crossorigin="anonymous"></script>
+    <title>TIC TAC TOE</title>
+</head>
+<body>
+    <div class="glassBack" id='firstGlass' style="display: none;">
+        <input type='text' placeholder="Enter your name" id='userInput'/>
+        <button onclick="getName()" id='nameButton'>Play</button>
+    </div>
+    <h1 id='actualHeader'>
+        <span>TIC</span>
+        <span>TAC</span>
+        <span>TOE</span>
+    </h1>
+    <h1 id='copyHeader'>
+        <span>TIC</span>
+        <span>TAC</span>
+        <span>TOE</span>
+    </h1>
+    <h2>Click a player to request</h2>
+    <div class="game">
+        <div class="board">
+            <div class="stick horizontal" id='hz1'></div>
+            <div class="stick horizontal" id='hz2'></div>
+            <div class="stick vertical" id='vt3'></div>
+            <div class="stick vertical" id='vt4'></div>
+            <!--Showing Winning Pattern-->
+            <div class="stick horizontal patternHoz" id='ph1'></div>
+            <div class="stick horizontal patternHoz" id='ph2'></div>
+            <div class="stick horizontal patternHoz" id='ph3'></div>
+            <div class="stick vertical patternVer" id='pv1'></div>
+            <div class="stick vertical patternVer" id='pv2'></div>
+            <div class="stick vertical patternVer" id='pv3'></div>
+            <div class="stickZ"></div>
+            <div class="stickZ" style='transform: rotate(-45deg);'></div>
+            <div class='row'>
+                <div class='turn'></div>
+                <div class='turn'></div>
+                <div class='turn'></div>
+            </div>
+            <div class='row'>
+                <div class='turn'></div>
+                <div class='turn'></div>
+                <div class='turn'></div>
+            </div>
+            <div class='row'>
+                <div class='turn'></div>
+                <div class='turn'></div>
+                <div class='turn'></div>
+            </div>
+        </div>
+        <div id='boardShadow'></div>
+    </div>
+    <div class="playerListDiv">
+        <h1>Players Online</h1>
+        <ul id='playerList'>
+        </ul>
+    </div>
+    <!--Dislay this when one person has won-->
+    <div class="glassBack" id='secGlass'>
+        <div id='glassText'></div>
+        <div class="closeButton"><i class="fas fa-window-close fa-3x" onclick='closeGlass()'></i></div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io();
+        var winnerName = '';
+        var myId = null;
+        var opponentId = null;
+        var ready = false;
+        var moveSymbol = '';
+        var patternStick = null;
+        var turnTitle = document.querySelector('h2');
+        const winArray = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6],
+        ]
+        const moves = document.getElementsByClassName('turn');
+        const playerInput = ["","","","","","","","",""];
+
+        [...moves].forEach((move, index) => {
+            move.addEventListener('click', (event)=>{
+                applyMove(event, index);
+            })
+        });
+
+        const applyMove = (event, index) => {       
+            if(ready)
+            if(event.target.classList.value=="turn" && event.target.innerHTML==''){
+                if(moveSymbol=='X'){
+                    event.target.innerHTML = "X";
+                    event.target.style.color = 'rgb(4, 68, 4)';
+                    playerInput[index] = "X";
+                    socket.emit('myMove', index);
+                }
+                else{
+                    event.target.innerHTML = "O";
+                    event.target.style.color = 'rgb(212, 15, 15)';
+                    playerInput[index] = "O";
+                    socket.emit('myMove', index);
+                }
+                checkForWin();
+                ready = false;
+                turnTitle.innerHTML = `Opponent's Turn`;
+            }
+        };
+
+        const setWinner = (moveType) => {
+            var back = document.getElementById('secGlass');
+            back.style.display = 'flex';
+            if(moveType=='(^_^)'){
+                back.childNodes[1].innerHTML = `You have a DRAW ${moveType}`;
+            }
+            else if(moveType == moveSymbol)
+                back.childNodes[1].innerHTML = `You WIN (@^_^)`;
+            else 
+                back.childNodes[1].innerHTML = `You LOSE (!^_^)`;
+            }
+
+        const checkForWin = () => {
+            winArray.forEach(combination=>{
+                if(playerInput[combination[0]]==playerInput[combination[1]] && playerInput[combination[1]]==playerInput[combination[2]]){
+                    // Show matching pattern if exists
+                    if(playerInput[combination[0]]=='X'){
+                        winnerName = 'X';
+                        setWinner('X');
+                        showConnectingLines(combination);
+                        return;
+                    }
+                    else if(playerInput[combination[0]]=='O'){
+                        winnerName = 'O';
+                        setWinner('O');
+                        showConnectingLines(combination);
+                        return;
+                    }
+                }
+                else{
+                    if(playerInput.find(elem=>elem=="")==undefined){
+                        if(winnerName=='')
+                            setWinner('(^_^)');
+                    }
+                }
+            })
+        }
+
+        const showConnectingLines = (array) => {
+            var stringValue = array[0].toString() + array[1].toString() + array[2].toString();
+            if(patternStick==null)
+            switch(stringValue){
+                case '012': patternStick = document.getElementsByClassName('patternHoz')[0];
+                    break;
+                case '345': patternStick = document.getElementsByClassName('patternHoz')[1];
+                    break;
+                case '678': patternStick = document.getElementsByClassName('patternHoz')[2];
+                    break;
+                case '036': patternStick = document.getElementsByClassName('patternVer')[0];
+                    break;
+                case '147': patternStick = document.getElementsByClassName('patternVer')[1];
+                    break;
+                case '258': patternStick = document.getElementsByClassName('patternVer')[2];
+                    break;
+                case '048': patternStick = document.getElementsByClassName('stickZ')[1];
+                    break;
+                case '246': patternStick = document.getElementsByClassName('stickZ')[0];
+                    break;
+                default: console.log('Nothing mathes');
+            }
+            if(patternStick!=null)  patternStick.style.display = 'block';
+        }
+
+        const readyToPlay = (event) => {
+            if(event.target.tagName=='LI'){
+                [...moves].forEach((move) => {
+                    move.innerHTML = "";
+                    // document.getElementById('secGlass').style.display = 'none';
+                });
+                for(let i=0; i<playerInput.length; i++){
+                    playerInput[i] = "";
+                }
+                // if(patternStick!=null){
+                //     patternStick.style.display = 'none';
+                //     patternStick = null;
+                // }
+                socket.emit('letsPlay', event.target.id);
+                document.getElementById(`${event.target.id}`).style.display = 'none';
+                turnTitle.innerHTML = 'Request sent';
+                opponentId = event.target.id;
+                winnerName = '';
+            }
+        }
+
+        function getName(){
+            var str = document.getElementById('userInput');
+            var uName = str.value;
+            if(uName.replace(/\s/g, '').length){
+                socket.emit("entered", uName);
+                document.getElementById('firstGlass').style.display = 'none';
+            }
+            str.value = '';
+        }
+
+        socket.on("name", (id) => {
+            myId = id;
+            document.getElementById('firstGlass').style.display = 'flex';
+        });
+
+        socket.on('playerList', (playerList)=>{
+            var list = document.getElementById('playerList');
+            list.innerHTML = '';
+            for(let element in playerList){
+                if(element!==myId && playerList[element].playing==false){
+                    // list.innerHTML+='<li class="listItem" onclick="readyToPlay(event)" id=' + element + '>' + playerList[element].name + '</li>';
+                    if(playerList[element].opponent == myId){
+                        list.innerHTML+='<li class="listItem" onclick="readyToPlay(event)" id=' + element + '>' + playerList[element].name + '<i class="fas fa-bell"></i></li>';
+                    }
+                    else{
+                        console.log('Else part');
+                        list.innerHTML+='<li class="listItem" onclick="readyToPlay(event)" id=' + element + '>' + playerList[element].name + '</li>';
+                    }
+                }
+            }
+        })
+
+        socket.on('yourTurn', (moveType)=>{
+            turnTitle.innerHTML = 'Your Turn';
+            ready = true;
+            moveSymbol = moveType;
+        });
+
+        socket.on('opponentTurn', (moveType)=>{
+            turnTitle.innerHTML = `Opponent's Turn`;
+            ready = false;
+            moveSymbol = moveType;
+        })
+
+        socket.on("opponentMove", (data)=>{
+            if(moveSymbol==''){
+                moveSymbol = 'O';
+            }
+            ready = true;
+            moves[data.index].innerHTML = data.move;
+            if(moveSymbol=='O'){
+                moves[data.index].style.color = 'rgb(4, 68, 4)';
+            }
+            else{
+                moves[data.index].style.color = 'rgb(212, 15, 15)';
+            }
+            playerInput[data.index] = data.move;
+            checkForWin();
+            turnTitle.innerHTML = 'Your Turn';
+        });
+
+        socket.on('opponentLeft', ()=>{
+            [...moves].forEach((move) => {
+                move.innerHTML = "";
+                document.getElementById('secGlass').style.display = 'none';
+            });
+            for(let i=0; i<playerInput.length; i++){
+                playerInput[i] = "";
+            }
+            if(patternStick!=null){
+                patternStick.style.display = 'none';
+                patternStick = null;
+            }
+            turnTitle.innerHTML = 'Opponent has left'
+        });
+
+        socket.on('matchRequest', (id)=>{
+            document.getElementById(`${id}`).innerHTML += `<i class="fas fa-bell"></i>`;
+        })
+
+        const closeGlass = () => {
+            [...moves].forEach((move) => {
+                move.innerHTML = "";
+                document.getElementById('secGlass').style.display = 'none';
+            });
+            for(let i=0; i<playerInput.length; i++){
+                playerInput[i] = "";
+            }
+            if(patternStick!=null){
+                patternStick.style.display = 'none';
+                patternStick = null;
+            }
+            winnerName = '';
+        }
+    </script>
+</body>
+</html>
